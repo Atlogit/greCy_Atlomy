@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "configs"
+		}
+	],
+	"settings": {
+		"spacy-extension.pythonInterpreter": "/root/anaconda3/envs/atlomy_nlp/bin/python"
+	}
+}
