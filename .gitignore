@@ -8,3 +8,8 @@ vectors
 wandb
 .DS_Store
 project.lock
+.help_scripts
+.evaluations
+*.code-workspace
+*.pyc
+.old_configs
