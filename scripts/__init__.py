@@ -18,7 +18,7 @@ from .lemma_preprocess import SentenceProcessor
 from .morphology_preprocess import MorphologyProcessor
 from .spancat_preprocess import SpanProcessor
 from .conllu_utils import ConlluProcessor
-from .analysis_utils import DocumentAnalyzer
+from .analysis_utils import LemmaEvaluator, NEREvaluator, SpanCatEvaluator
 
 __version__ = "0.1.0"
 __all__ = [
@@ -29,15 +29,17 @@ __all__ = [
     "SOURCE_WEIGHTS",
     "FileIO",
     "Preprocessor",
-    
+
     # Processing modules
     "SentenceProcessor",
     "MorphologyProcessor",
     "SpanProcessor",
     "ConlluProcessor",
-    
-    # Analysis utilities
-    "DocumentAnalyzer",
+
+    # Evaluators
+    "LemmaEvaluator",
+    "NEREvaluator",
+    "SpanCatEvaluator",
 ]
 
 # Configure default logging
