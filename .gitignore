@@ -13,3 +13,14 @@ project.lock
 *.code-workspace
 *.pyc
 .old_configs
+
+# Build artifacts (no longer tracked from src/)
+src/big_dict*.json
+src/big_dict*.txt
+src/inception_dict*.json
+src/inception_dict*.txt
+src/apostrophe_items.txt
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
