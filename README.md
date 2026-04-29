@@ -1,105 +1,182 @@
-# greCy
-## Ancient Greek models for spaCy
+# greCy_Atlomy
 
-greCy is a set of spaCy ancient Greek models and its installer. The models were trained using the [Perseus](https://universaldependencies.org/treebanks/grc_perseus/index.html) and  [Proiel UD](https://universaldependencies.org/treebanks/grc_proiel/index.html) corpora. Prior to installation, the models can be tested on my [Ancient Greek Syntax Analyzer](https://huggingface.co/spaces/Jacobo/syntax) on the [Hugging Face Hub](https://huggingface.co/), where you can also check the various performance metrics of each model.
+`grc_atlomy_spancat` is a [spaCy](https://spacy.io) pipeline for Ancient Greek
+that adds **span categorisation of medical and anatomical terminology** on top
+of a working morpho-syntactic backbone (transformer + tagger + morphologizer +
+parser + lemmatiser).
 
-In general, models trained with the Proiel corpus perform better in POS Tagging and Dependency Parsing, while Perseus models are better at sentence segmentation using punctuation, and Morphological Analysis. Lemmatization is similar across models because they share the same neural lemmatizer in two variants: the most accurate lemmatizer was trained with word vectors, and the other was not. The best models for lemmatization are the large models . 
+It is built on the [greCy](https://github.com/jmyerston/greCy) project and the
+[Perseus](https://universaldependencies.org/treebanks/grc_perseus/index.html) /
+[PROIEL](https://universaldependencies.org/treebanks/grc_proiel/index.html) UD
+treebanks; the spancat layer is trained on a hand-annotated corpus from the
+Atlomy project (Galen, Hippocrates, etc.).
 
-### Installation
+## Span categories
 
-First install the python package as usual:
+The spancat predicts spans under `doc.spans["sc"]` with these labels:
 
-``` bash
-pip install -U grecy
+| Label                   | Coverage on test set | F1   |
+|-------------------------|----------------------|------|
+| Body Part               | 161 spans            | 0.93 |
+| Topography              | 125 spans            | 0.95 |
+| Adjectives/Qualities    |  71 spans            | 0.89 |
+| Action Verbs            |  15 spans            | 0.82 |
+| Medical                 |  11 spans            | 0.74 |
+| Physiology              |   9 spans            | 0.94 |
+| Technical Appellation   |   5 spans            | 0.67 |
+| Division                |   5 spans            | 0.57 |
+| Symmetry/Opposition     |   2 spans            | 0.00 |
+| **Overall**             | **404 spans**        | **0.913** |
+
+(Pathology is in the label set but not represented in the test split.)
+
+## Install
+
+```bash
+pip install -r requirements.txt
+pip install grc_atlomy_spancat-0.1.0.tar.gz
 ```
 
-Once the package is successfully installed, you can proceed to dowload and install any of the followings models:
+The release tarball is attached to GitHub
+[releases](https://github.com/Atlogit/greCy_Atlomy/releases). The pipeline is
+~1.1 GB because it ships the embedded transformer
+(`wantuta/roberta_ancient_greek_mlm`) weights — there is no network fetch on
+first load.
 
-* grc_perseus_sm
-* grc_proiel_sm
-* grc_perseus_lg
-* grc_proiel_lg
-* grc_perseus_trf
-* grc_proiel_trf
+## Use
 
-
-The models can be installed from the terminal with the commands below:
-
-```
-python -m grecy install MODEL
-```
-where you replace MODEL by any of the model names listed above.  The suffixes after the corpus name, _sm, _lg, and _trf, indicate the size of the model which directly depends on the word embedding used for training. The smallest models end in _sm (small) and are the less accurate ones: they are good for testing and building lightweight apps. The _lg and _trf are the large and transformers models which are more accurate. The _lg were trained using fasttext word vectors in the spaCy floret version, and the _trf models were trained using a special version of BERT, pertained by ourselves with the largest available Ancient Greek corpus, namely, the TLG.  The vectors for large models were also trained with the TLG corpus.
-
-
-### Loading
-
-As usual, you can load any of the four models with the following Python lines:
-
-```
+```python
 import spacy
-nlp = spacy.load("grc_proiel_XX")
-```
-Remember to replace  _XX  with the size of the model you would like to use, this means, _sm for small, _lg for large, and _trf for transformer. The _trf model is the most accurate but also the slowest.
+nlp = spacy.load("grc_atlomy_spancat")
 
-### Use
-
-spaCy is a powerful NLP library with many application. The most basic of its function is the morpho-syntantic annotation of texts for further processing. A common routine is to load a model, create a doc object, and process a text:
-
-```
-import spacy
-nlp = spacy.load("grc_proiel_sm")
-
-text = "καὶ πρὶν μὲν ἐν κακοῖσι κειμένην ὅμως ἐλπίς μʼ ἀεὶ προσῆγε σωθέντος τέκνου ἀλκήν τινʼ εὑρεῖν κἀπικούρησιν δόμον"
-
+text = (
+    "πρὸς δὲ τὸν καυλὸν τὸν τῆς κύστεως συνήρτηται τὸ αἰδοῖον, "
+    "τὸ μὲν ἐξωτάτω τρῆμα συνερρωγὸς εἰς τὸ αὐτό"
+)
 doc = nlp(text)
 
 for token in doc:
-    print(f'{token.text}, lemma: {token.lemma_} pos:{token.pos_}')
-    
+    print(f"{token.text}\t{token.lemma_}\t{token.pos_}\t{token.morph}")
+
+for span in doc.spans["sc"]:
+    print(f"[{span.start_char}:{span.end_char}] {span.label_:25s} {span.text}")
 ```
 
-#### The apostrophe issue
+A more complete walkthrough — including span and dependency-tree rendering
+with displaCy — is in [`notebooks/demo.ipynb`](notebooks/demo.ipynb).
 
-Unfortunaly, there is no consensus among the different internet projects that offer ancient Greek texts about how to represent the Ancient Greek apostrophe. Modern Greek simply uses the regular apostrophe, but ancient texts available in Perseus and Perseus under Philologic use various unicode characters for the apostrophe. Instead of the apostrophe, we find the Greek koronis, modifier letter apostrophe, and right single quotation mark. Provisionally, I have opted to use modifier letter apostrophe in the corpus  with which I trained the models. This means, that if you want the greCy models to properly handle the apostrophe you have to make sure that the Ancient Greek texts that you are processing use the modifier letter apostrophe **ʼ** (U+02BC ). Otherwise the models will fail to lemmatize and tag some words in your texts that ends with an 'apostrophe'.
+## What's in the pipeline
 
-### Building
+```python
+>>> nlp.pipe_names
+['transformer', 'morphologizer', 'tagger', 'parser',
+ 'trainable_lemmatizer', 'attribute_ruler', 'spancat']
+```
 
-I offer here the project file, I use to train the models in case you want to customize your models for your specific needs. The six standard spaCy models (small, large, and transformer) are built and packaged using the following commands:
+| Component             | Source       | Notes |
+|-----------------------|--------------|-------|
+| `transformer`         | wantuta      | RoBERTa-base (768d) trained on Ancient Greek MLM |
+| `morphologizer`       | wantuta-fine | Universal Dependencies POS + features |
+| `tagger`              | wantuta-fine | PROIEL XPOS tagset (`A-`, `Df`, `Nb`, …) |
+| `parser`              | wantuta-fine | UD-style dependencies (UAS ≈ 0.59 on Atlomy in-domain) |
+| `trainable_lemmatizer`| wantuta-fine | 95% lemma accuracy on Atlomy CoDA test set |
+| `spancat`             | atlomy       | 91% F1; uses a baked-in transformer copy (see below) |
 
+The `spancat` component carries its **own** copy of the transformer weights
+because its `TransformerListener` was trained against a different fine-tuning
+of the base than the rest of the pipeline. Bolting the spancat onto a
+different upstream transformer produces unusable output — see "Building from
+source" below for details.
 
-1. python -m spacy project assets
-2. python -m spacy project run all
+## Building from source
 
-### Performance
+If you want to retrain or rebuild the combined pipeline from your own
+component checkpoints, use `scripts/build_pipeline.py`:
 
-For a general comparison, I share here the metrics of the Proiel transformer grc_proiel_trf and grc_perseys_trf.  These models use for fine-tuning a transformer that was specifically trained to be used with spaCy and, consequently, makes the model much smaller than the alternatives offered by Python nlp libraries such as Stanza and Trankit (for more information on the transformer model and how it was trained see [aristoBERTo](https://huggingface.co/Jacobo/aristoBERTo)).  The greCy's _trf models outperform Stanza and Trankit in most metrics and have the advantage that their size is only ~430 MB vs.  the 1.2 GB of the Trankit model trained with XLM Roberta.  See table  below:
+```bash
+python -m scripts.build_pipeline \
+  --spancat-source path/to/your-spancat-pipeline/model-best \
+  --lemma-source   path/to/your-lemmatizer-pipeline/model-best \
+  --output         out/grc_atlomy_spancat \
+  --name atlomy_spancat \
+  --version 0.1.0
+```
 
-#### Proiel
+The script does one important thing: it calls
+`nlp.replace_listeners("transformer", "spancat", ["model.tok2vec"])` on the
+spancat-source pipeline before sourcing the spancat onto the lemma-source.
+This bakes the spancat's `TransformerListener` into a self-contained
+`Tok2VecTransformer`. Without it, the spancat reads embeddings from the
+destination pipeline's transformer — which has been fine-tuned for a
+different objective — and produces garbage.
 
-| Library | Tokens	| Sentences	| UPOS	| XPOS	| UFeats	|Lemmas	|UAS	  |LAS	  |
-|  ---    | ---     | ---       | ---   | ---   | ---     | ---   | ---   | ---   |
-| spaCy   | 100     | 71.74 | 98.45 | 98.53 | 94.18 | 96.59 | 85.79 | 82.30 |
-| Trankit | 99.91 	| 67.60     |97.86 	| 97.93 |93.03 	  | 97.50 |85.63 	|82.31  |
-| Stanza  | 100	    | 51.65	    | 97.38	| 97.75	| 92.09	  | 97.42	| 80.34 |76.33  |
+To turn the resulting directory into a pip-installable artifact:
 
-#### Perseus
+```bash
+mkdir -p dist
+python -m spacy package out/grc_atlomy_spancat dist/ --build sdist
+```
 
-| Library | Tokens	| Sentences	| UPOS	| XPOS	| UFeats	|Lemmas	|UAS	  |LAS	  |
-|  ---    | ---     | ---       | ---   | ---   | ---     | ---   | ---   | ---   |
-| spaCy   | 100     | 99.38     | 96.75 | 96.82 | 95.16 | 97.33 | 81.92 | 77.26 |
-| Trankit | 99.71 | 98.70 |93.97 	| 87.25 |91.66 	  | 88.52  |83.48 	|78.56  |
-| Stanza  | 99.8	 | 98.85	| 92.54	| 85.22	| 91.06	| 88.26	| 78.75 |73.35  |
-| OdyCy | -	| 84.09	| 97.32	| 94.18	| 94.09	| 93.89	| 81.40 |76.42 |
+## Training data
 
-### Caveat 
+The data used to train the components in this pipeline includes:
 
-Metrics, however, can be misleading. This becomes particularly obvious when you work with texts that are not part of the training and evaluation dataset. In addition, greCy's lemmatizers (in all sizes) exhibit lower benchmarks in comparison to the above mentioned nlp libraries, but they have a substantially larger vocabulary than the Stanza and Trankit models because they were trained with a complemental lemma corpus derived from Giussepe G.A. Celano [lemmatized corpus](https://github.com/gcelano/LemmatizedAncientGreekXML). This means that the greCy's lemmatizers perform better than Trankit and Stanza when processing texts not included in the Perseus and Proiel datasets. 
+- **POS / morph / parser / lemma**: PROIEL + Perseus UD treebanks, plus a
+  custom Atlomy lemma corpus derived in part from
+  [Giuseppe Celano's lemmatised corpus](https://github.com/gcelano/LemmatizedAncientGreekXML).
+  Gold `.spacy` files for each split are checked into `corpus/`.
+- **SpanCat**: hand-annotated medical/anatomical text from the Atlomy project
+  (Galen, Hippocrates, Aristotle), distributed across
+  `corpus/{train,dev,test}/spancat_*`.
 
-### Future Developments
+Annotation work used [INCEpTION](https://inception-project.github.io/) and
+an internal CoDA spreadsheet; the original raw sources are not
+redistributable, but the prepared `.spacy` corpora used for training are.
 
-This project was initiated as part of the [Diogenet Project](https://diogenet.ucsd.edu/), a research initiative that focuses on the automatic extraction of social relations from Ancient Greek texts. As part of this project, greCy will add first, in a non distant future,  a NER pipeline for the identification of entities; later I hope also to offer pipeline for the extraction of social relation from Greek texts. This pipeline should contribute to the study of social networks in the ancient world. 
+## Repository layout
 
+```
+greCy_Atlomy/
+├── README.md
+├── requirements.txt
+├── project.yml          # spaCy project file
+├── configs/             # spaCy training configs
+├── corpus/              # Prepared .spacy training/dev/test data
+├── data/                # Labels + augmenter patterns
+├── scripts/             # CLI tools and library code
+│   ├── build_pipeline.py    # Combines spancat + lemma pipelines
+│   ├── main.py              # Preprocess / evaluate CLI
+│   ├── analysis_utils.py    # Lemma / NER / SpanCat evaluators
+│   └── ...
+└── notebooks/
+    └── demo.ipynb       # Inference walkthrough
+```
 
+## Caveats
 
+- **POS vs tag**: `token.pos_` is Universal POS; `token.tag_` is the PROIEL
+  XPOS (`A-`, `Df`, `Nb`, …).
+- **Dependency labels**: the parser was trained on a slightly different
+  label vocabulary than the Atlomy CoDA evaluation set, so labelled
+  attachment scores (LAS) are misleadingly low on that out-of-distribution
+  test. UAS (head attachment) is meaningful; LAS is only meaningful against
+  UD-PROIEL test data.
+- **Tokenisation**: the spaCy tokenizer for `grc` handles most Ancient Greek
+  punctuation and apostrophes, but a small fraction of edge cases —
+  especially around the modifier letter apostrophe `ʼ` (U+02BC) — tokenise
+  differently from some hand-curated gold sets.
 
+## License
 
+MIT — see [LICENSE](LICENSE). Built on:
+
+- [greCy](https://github.com/jmyerston/greCy) (MIT, Jacobo Myerston)
+- [PROIEL](https://github.com/proiel/proiel-treebank) and
+  [Perseus](https://github.com/PerseusDL/treebank_data) UD treebanks
+- [aristoBERTo](https://huggingface.co/Jacobo/aristoBERTo) and
+  [`wantuta/roberta_ancient_greek_mlm`](https://huggingface.co/wantuta/roberta_ancient_greek_mlm)
+
+## Citation
+
+If you use this model in academic work, please cite both the upstream greCy
+project and the Atlomy span-categorisation work. A `CITATION.cff` is provided.
